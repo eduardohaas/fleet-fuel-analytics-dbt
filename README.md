@@ -3,6 +3,14 @@
 [![dbt build](https://github.com/eduardohaas/fleet-fuel-analytics-dbt/actions/workflows/dbt.yml/badge.svg)](https://github.com/eduardohaas/fleet-fuel-analytics-dbt/actions/workflows/dbt.yml)
 [![dbt docs](https://img.shields.io/badge/dbt%20docs-live-0b6e5f)](https://eduardohaas.github.io/fleet-fuel-analytics-dbt/)
 
+> **Resumo em português** — Custo de combustível de uma frota de 36 veículos no RS comparado com os **preços reais da ANP** (107 mil preços coletados em postos, jan/2025 a out/2026, atualizados toda semana). Cinco regras de anomalia rodam sobre o que os motoristas lançam no app da frota.
+> - **A alta do diesel de mar/2026 custou R$ 63 mil por mês à frota:** o custo por km foi de R$ 1,83 para R$ 2,05 (+11,6%).
+> - **R$ 120 mil pagos acima do mercado, 61% em um único posto**, que cobrava em média 12% acima da mediana da cidade.
+> - **Um caminhão consumiu 6.828 litros a mais do que deveria** em 4 meses (cerca de R$ 46 mil), e a regra pegou já no primeiro mês.
+> - Carga incremental que descobre os arquivos da ANP sozinha (os nomes mudam sem aviso e falta o mês de abril/2026), modelos incrementais no dbt, 36 testes e CI com cache.
+>
+> Preços da ANP reais; frota e postos fictícios. Documentação técnica em inglês abaixo.
+
 Fuel is the largest variable cost of a logistics company, and the fleet manager has three questions every month: **what does each kilometer cost, are we paying market price, and is any fuel disappearing?**
 
 This project answers them for a 36-vehicle fleet in Rio Grande do Sul, Brazil. It benchmarks every fueling against **real retail prices collected by ANP** (the National Petroleum Agency, 107,500 station prices from Jan/2025 to Oct/2026) and runs five anomaly rules over what drivers log in the fleet app.
