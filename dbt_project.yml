@@ -1,0 +1,32 @@
+name: fleet_fuel
+version: "1.0.0"
+config-version: 2
+profile: fleet_fuel
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Anomaly thresholds: business decisions, tuned with the fleet manager.
+  tank_tolerance: 1.05          # liters above tank capacity x this = fuel not going into the tank
+  price_premium_threshold: 0.08 # paid more than 8% above the city's ANP median
+  efficiency_floor: 0.75        # km/l below 75% of the model benchmark
+
+models:
+  fleet_fuel:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
+
+seeds:
+  fleet_fuel:
+    +schema: business_rules

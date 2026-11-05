@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: fleet_app
+    description: Extract from the fleet app where drivers log every fueling (synthetic, see ingestion/generate_fleet_data.py).
+    schema: raw
+    tables:
+      - name: fleet_vehicles
+      - name: fleet_drivers
+      - name: fleet_fuelings
+        description: Driver-submitted fuelings. Double submissions get a new fueling_id, so dedup is by content.

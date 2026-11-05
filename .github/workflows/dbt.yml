@@ -1,0 +1,71 @@
+name: dbt build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 9 * * 1"   # every Monday: pick up new ANP months and rebuild
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # ANP files are large and gov.br is slow: keep downloaded months between runs,
+      # so each run only downloads what ANP published since the last one.
+      - name: Restore ANP file cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/anp
+          key: anp-${{ github.run_id }}
+          restore-keys: anp-
+
+      - name: Install
+        run: |
+          pip install -r requirements.txt
+          dbt deps --profiles-dir .
+
+      - name: Ingest (ANP open data + fleet app extract)
+        run: |
+          python ingestion/load_anp_prices.py
+          python ingestion/generate_fleet_data.py
+
+      - name: Source freshness
+        run: dbt source freshness --profiles-dir .
+
+      - name: dbt build (seeds, models, data tests, unit tests)
+        run: dbt build --profiles-dir .
+
+      - name: Generate docs
+        run: |
+          dbt docs generate --profiles-dir . --static
+          mkdir -p site && cp target/static_index.html site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: site
+
+  deploy-docs:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

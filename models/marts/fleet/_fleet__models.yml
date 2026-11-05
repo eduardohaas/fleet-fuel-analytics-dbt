@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: fct_fuelings
+    description: One row per fueling with distance, km/l, ANP benchmark, overpayment and anomaly flags. Incremental (7-day lookback).
+    columns:
+      - name: fueling_id
+        data_tests: [unique, not_null]
+      - name: plate
+        data_tests:
+          - relationships: {arguments: {to: ref('dim_vehicles'), field: plate}}
+      - name: benchmark_price_brl
+        description: ANP market median for that city, month and product (with fallback, see int_market_prices).
+        data_tests: [not_null]
+      - name: overpaid_brl
+        data_tests:
+          - dbt_utils.accepted_range: {arguments: {min_value: 0}}
+
+  - name: fct_vehicle_month
+    description: Fuel cost, km, km/l, cost per km and overpayment per vehicle and month.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [plate, reference_month]}
+
+  - name: rpt_fleet_monthly
+    description: Fleet totals per month next to the ANP Diesel S10 median for Rio Grande do Sul.
+    columns:
+      - name: reference_month
+        data_tests: [unique, not_null]
+
+  - name: fct_fuel_anomalies
+    description: One row per fueling and broken rule, with a human-readable reason (the fleet manager's audit list).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [fueling_id, rule]}
+    columns:
+      - name: rule
+        data_tests:
+          - accepted_values:
+              arguments: {values: ['over_tank', 'odometer_regression', 'wrong_fuel', 'price_above_market', 'low_efficiency']}
+
+  - name: dim_vehicles
+    columns:
+      - name: plate
+        data_tests: [unique, not_null]
+
+  - name: dim_drivers
+    columns:
+      - name: driver_id
+        data_tests: [unique, not_null]

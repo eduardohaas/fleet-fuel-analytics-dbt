@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: stg_anp__fuel_prices
+    description: Typed ANP price observations (incremental by source file).
+    columns:
+      - name: anp_product
+        data_tests:
+          - accepted_values:
+              arguments: {values: ['DIESEL S10', 'DIESEL', 'GASOLINA', 'GASOLINA ADITIVADA', 'ETANOL', 'GNV']}
+      - name: sale_price_brl
+        description: Retail price per liter (per m3 for GNV).
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range: {arguments: {min_value: 1, max_value: 15}}
+      - name: collected_on
+        data_tests: [not_null]

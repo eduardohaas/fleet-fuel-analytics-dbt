@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: int_market_prices
+    description: ANP benchmark price per city, month and product, with fallback when ANP did not observe that city or month.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [municipality, anp_product, reference_month]}
+    columns:
+      - name: benchmark_price_brl
+        data_tests: [not_null]
+      - name: benchmark_source
+        data_tests:
+          - accepted_values: {arguments: {values: ['city_month', 'city_last_known_month', 'state_month']}}
+
+  - name: int_fuelings_flagged
+    description: Fuelings with distance, km/l, market benchmark and one boolean per anomaly rule.
+
+unit_tests:
+  - name: anomaly_rules_flag_the_right_fuelings
+    description: >
+      Normal fueling gets no flag; an odometer typo is flagged without corrupting the next fueling's distance;
+      jerrycans, overpricing, low efficiency and wrong fuel are each caught.
+    model: int_fuelings_flagged
+    overrides:
+      vars: {tank_tolerance: 1.05, price_premium_threshold: 0.08, efficiency_floor: 0.75}
+    given:
+      - input: ref('stg_fleet__fuelings')
+        rows:
+          - {fueling_id: f1, plate: V1, fueled_at: "2025-01-01 08:00:00", reference_month: 2025-01-01, municipality: LAJEADO, anp_product: DIESEL S10, liters: 50, unit_price_brl: 6.00, odometer_km: 1000}
+          - {fueling_id: f2, plate: V1, fueled_at: "2025-01-05 08:00:00", reference_month: 2025-01-01, municipality: LAJEADO, anp_product: DIESEL S10, liters: 50, unit_price_brl: 6.00, odometer_km: 1250}
+          - {fueling_id: f3, plate: V1, fueled_at: "2025-01-09 08:00:00", reference_month: 2025-01-01, municipality: LAJEADO, anp_product: DIESEL S10, liters: 40, unit_price_brl: 6.00, odometer_km: 1200}
+          - {fueling_id: f4, plate: V1, fueled_at: "2025-01-12 08:00:00", reference_month: 2025-01-01, municipality: LAJEADO, anp_product: DIESEL S10, liters: 120, unit_price_brl: 7.00, odometer_km: 1500}
+          - {fueling_id: f5, plate: V1, fueled_at: "2025-01-20 08:00:00", reference_month: 2025-01-01, municipality: LAJEADO, anp_product: GASOLINA, liters: 50, unit_price_brl: 6.00, odometer_km: 1750}
+      - input: ref('stg_fleet__vehicles')
+        rows:
+          - {plate: V1, fuel_type: diesel, tank_capacity_l: 100, benchmark_km_per_l: 5}
+      - input: ref('int_market_prices')
+        rows:
+          - {municipality: LAJEADO, reference_month: 2025-01-01, anp_product: DIESEL S10, benchmark_price_brl: 6.00}
+          - {municipality: LAJEADO, reference_month: 2025-01-01, anp_product: GASOLINA, benchmark_price_brl: 6.00}
+      - input: ref('fuel_compatibility')
+        rows:
+          - {fuel_type: diesel, anp_product: DIESEL S10}
+    expect:
+      rows:
+        - {fueling_id: f1, km_since_last: null, flag_over_tank: false, flag_odometer_regression: false, flag_wrong_fuel: false, flag_price_above_market: false, flag_low_efficiency: false, overpaid_brl: 0}
+        - {fueling_id: f2, km_since_last: 250, flag_over_tank: false, flag_odometer_regression: false, flag_wrong_fuel: false, flag_price_above_market: false, flag_low_efficiency: false, overpaid_brl: 0}
+        - {fueling_id: f3, km_since_last: -50, flag_over_tank: false, flag_odometer_regression: true, flag_wrong_fuel: false, flag_price_above_market: false, flag_low_efficiency: false, overpaid_brl: 0}
+        - {fueling_id: f4, km_since_last: 250, flag_over_tank: true, flag_odometer_regression: false, flag_wrong_fuel: false, flag_price_above_market: true, flag_low_efficiency: true, overpaid_brl: 120}
+        - {fueling_id: f5, km_since_last: 250, flag_over_tank: false, flag_odometer_regression: false, flag_wrong_fuel: true, flag_price_above_market: false, flag_low_efficiency: false, overpaid_brl: 0}

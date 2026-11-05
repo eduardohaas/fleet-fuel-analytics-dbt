@@ -1,0 +1,5 @@
+vehicle_model,vehicle_class,fuel_type,tank_capacity_l,benchmark_km_per_l
+HT-6X2,heavy_truck,diesel,600,2.5
+LT-34,light_truck,diesel,150,5.5
+VAN-L,van,diesel,80,9.0
+CAR-FLEX,car,flex,50,11.5

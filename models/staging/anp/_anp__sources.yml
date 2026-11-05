@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: anp
+    description: Retail fuel prices collected by ANP at gas stations (open data), Rio Grande do Sul only. Loaded by ingestion/load_anp_prices.py.
+    schema: raw
+    tables:
+      - name: anp_fuel_prices
+        description: One row per station, product and collection date, all columns as published (text).
+      - name: anp_files_loaded
+        description: Manifest of monthly ANP files already loaded (drives the incremental load).
+        loaded_at_field: loaded_at
+        freshness:
+          warn_after: {count: 45, period: day}
